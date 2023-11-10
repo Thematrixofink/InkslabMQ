@@ -16,6 +16,7 @@ public class PublisherController {  //处理HTTP请求并返回响应
         final String message = data.get("message");//发送的字段
 
         MiddleWare.appendMQ(pub_id, topic, message);//添加到消息队列里
+
         return "OK.";
     }
 }
