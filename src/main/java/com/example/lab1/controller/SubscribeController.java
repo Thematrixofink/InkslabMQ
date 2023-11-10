@@ -1,5 +1,6 @@
 package com.example.lab1.controller;
 
+import com.example.lab1.common.BaseResponse;
 import com.example.lab1.middleware.MiddleWare;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -8,15 +9,26 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 消息消费者（观察者）
+ */
 @RestController
 public class SubscribeController {
+    /**
+     * 向某个队列注册，并开始监听队列，接收消息
+     * @return 返回监听到的信息
+     */
+    @PostMapping("/getMessageMQ")
+    public BaseResponse<String> getMessageFromMQ(@RequestBody Map<String, String> data){
+        final String queueId = data.get("queueId");
+        return MiddleWare.getMsgFromMQ(queueId);
+    }
+
     @PostMapping(value = "/subscribe/topic")//处理subscribe/topic端点post请求
     String newSubscribeViaTopic(@RequestBody Map<String, String> data) {
         final String subscribe_id = data.get("sub_id");//接收数据段中的发送者id信息
         final String topic = data.get("topic");//接收数据段中的主题信息
-
         MiddleWare.appendSubcribeByTopic(subscribe_id, topic);
-
         return "OK.";
     }
 

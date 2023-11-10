@@ -1,26 +1,47 @@
 package com.example.lab1.middleware;
 
+import com.example.lab1.common.BaseResponse;
+import com.example.lab1.common.ErrorCode;
+import com.example.lab1.common.ResultUtils;
 import com.example.lab1.pojo.SubList;
 import org.springframework.stereotype.Service;
 
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 //提供相应的中间件方法
 @Service
 public class MiddleWare {
     //static final 修饰的一系列线程安全的map
     //提供一系列更新消息队列或返回消息的方法
+    //储存消息发布者与其发布的主题、订阅它的订阅者的信息
     public static final Map<String, SubList> subscribeMap = new ConcurrentHashMap<>();//等价下面两个
     //public static final Map<String, List<String>> subscribeTopicMap = new ConcurrentHashMap<>();//<订阅者，List<主题>>
     //public static final Map<String,List<String>> subscribePubMap = new ConcurrentHashMap<>();//<订阅者，List<发布者>>
-    public static final Map<Integer, Set<String>> UsefulMQ = new ConcurrentHashMap<>();//保存每个消息对应的主题和发布者都有哪个订阅者没收到
-    public static final Map<Integer,String> MQ = new ConcurrentHashMap<>();//消息队列
-    public static final Map<String,List<Integer>> TopicMq = new ConcurrentHashMap<>();//<主题，List<>>
-    public static final Map<String,List<Integer>> PubMq = new ConcurrentHashMap<>();//<发布者，List<>>
+
+    //保存每个消息对应的主题和发布者都有哪个订阅者没收到
+    public static final Map<Integer, Set<String>> UsefulMQ = new ConcurrentHashMap<>();
+
+    //消息队列          Key为消息的ID   Value为消息的具体内容
+    public static final Map<Integer,String> MQ = new ConcurrentHashMap<>();
+    //<主题，List<>>    Key为主题     Value为与此主题相关联的消息ID
+    public static final Map<String,List<Integer>> TopicMq = new ConcurrentHashMap<>();
+    //<发布者，List<>>  Key为发布者的ID Value为发布者发送的消息的ID
+    public static final Map<String,List<Integer>> PubMq = new ConcurrentHashMap<>();
+
+    //消息队列  Key为队列的ID，Value相应的队列
+    private static final ConcurrentHashMap<String, ConcurrentLinkedQueue<String>> msgQueues = new ConcurrentHashMap<>();
 
     //与发布者有关，根据发布者和主题更新TopicMq和PubMq和MQ和UsefulMQ
+    /**
+     * 将消息添加到消息队列
+     * @param publisher 消息发布者的ID
+     * @param topic     发送的主题
+     * @param message   消息的具体内容
+     * @return
+     */
     public static List<String> appendMQ(String publisher,String topic,String message)
     {
         int size= MQ.size();
@@ -50,7 +71,8 @@ public class MiddleWare {
         for (String sub:subscribeMap.keySet())//遍历每个订阅者
         {
             SubList subList=subscribeMap.get(sub);//获取每个订阅者的订阅消息
-            if (subList.getSubscribeTopicSet().contains(topic)||subList.getSubscribePubSet().contains(publisher))//判断订阅者是否订阅了该主题或发布者
+            //判断订阅者是否订阅了该主题或发布者
+            if (subList.getSubscribeTopicSet().contains(topic)||subList.getSubscribePubSet().contains(publisher))
             {
                if (UsefulMQ.containsKey(size+1)) //添加后续订阅者（如果有的话）
                 {
@@ -192,5 +214,48 @@ public class MiddleWare {
             }
         }
         return stringList;
+    }
+
+
+    /**
+     * 向某个特定的消息队列中添加信息
+     * @param queueId 队列的ID
+     * @param message 发布的信息
+     */
+    public static BaseResponse<String> addMegToMQ(String queueId, String message) {
+        //检测队列的ID合法性
+        if(queueId == null ||queueId.isEmpty()) return ResultUtils.error(ErrorCode.PARAMS_ERROR,"队列的Id不能为空!");
+        //如果目标队列已经存在，那么就直接向队列中添加一个消息
+        if(msgQueues.containsKey(queueId)){
+            ConcurrentLinkedQueue<String> msgQueue = msgQueues.get(queueId);
+            msgQueue.offer(message);
+            return ResultUtils.success("添加 '"+message+"' 信息到 '"+queueId+"' 队列成功");
+        }
+        //如果目标队列不存在，那么就返回错误，队列不存在
+        else{
+            ConcurrentLinkedQueue<String> messages = new ConcurrentLinkedQueue<>();
+            messages.offer(message);
+            msgQueues.put(queueId,messages);
+            return ResultUtils.success("添加 '"+message+"' 信息到 '"+queueId+"' 队列成功");
+            //return ResultUtils.error(ErrorCode.NOT_FOUND_ERROR,"目标队列不存在");
+        }
+    }
+
+    /**
+     * 从某个特定的消息队列中发送信息
+     * @param queueId 队列的名称
+     * @return 返回响应
+     */
+    public static BaseResponse<String> getMsgFromMQ(String queueId) {
+        if(!msgQueues.containsKey(queueId)){
+            return ResultUtils.error(ErrorCode.PARAMS_ERROR,"队列不存在");
+        }else{
+            ConcurrentLinkedQueue<String> msg = msgQueues.get(queueId);
+            if(msg.isEmpty()){
+                return ResultUtils.error(ErrorCode.NOT_FOUND_ERROR,"队列无元素");
+            }else{
+                return ResultUtils.success(msg.poll());
+            }
+        }
     }
 }
