@@ -11,8 +11,8 @@
     <groupId>com.example</groupId>
     <artifactId>inkslabMQ</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>soft-arc-lab1</name>
-    <description>soft-arc-lab1</description>
+    <name>inkslabMQ</name>
+    <description>inkslabMQ</description>
     <properties>
         <java.version>1.8</java.version>
     </properties>

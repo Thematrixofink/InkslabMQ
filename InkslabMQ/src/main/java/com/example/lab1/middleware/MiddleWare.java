@@ -360,14 +360,15 @@ public class MiddleWare {
      * @param message 消息内容
      * @return 返回消息
      */
-    public static BaseResponse<String> addMsg(String moduleId, String message) {
-        if (msg.containsKey(moduleId)) {
-            Vector<String> msgs = msg.get(moduleId);
-            msgs.add(message);
-        } else {
-            Vector<String> temp = new Vector<>();
-            temp.add(message);
-            msg.put(moduleId, temp);
+    public static BaseResponse<String> addMsg(String message) {
+        if(msg.isEmpty()) return ResultUtils.error(ErrorCode.NOT_FOUND_ERROR,"无注册模块，消息不会被接受");
+        Iterator<Map.Entry<String, Vector<String>>> iterator = msg.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, Vector<String>> temp = iterator.next();
+            String key = temp.getKey();
+            Vector<String> value = temp.getValue();
+            value.add(message);
+            log.info("向用户:" + key + "的待发送队列里面添加" + message);
         }
         return ResultUtils.success("添加 '" + message + "事件成功");
     }
@@ -379,11 +380,10 @@ public class MiddleWare {
      * @return
      */
     public static BaseResponse<String> addModule(String moduleId) {
-
         //如果模块已经注册了，检查是否有没发送的消息
         if (!msg.containsKey(moduleId)) {
             msg.put(moduleId, new Vector<>());
-            return ResultUtils.success("");
+            return ResultUtils.success("模块注册成功!");
         } else {
             Vector<String> msgs = msg.get(moduleId);
             StringBuilder data = new StringBuilder();
@@ -392,9 +392,14 @@ public class MiddleWare {
                 while (iterator.hasNext()) {
                     String next = iterator.next();
                     data.append(next).append(";");
+                    iterator.remove();
                 }
             }
-            return ResultUtils.success(data.toString());
+            if(data.length() > 0) {
+                return ResultUtils.success(data.toString());
+            }else{
+                return ResultUtils.error(ErrorCode.NOT_FOUND_ERROR,"未获取到信息");
+            }
         }
 
     }

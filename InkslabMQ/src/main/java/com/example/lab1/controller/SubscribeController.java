@@ -15,13 +15,12 @@ import java.util.Map;
 @RestController
 public class SubscribeController {
     /**
-     *
-     * @param data
-     * @return
+     * 注册模块到消息队列
+     * @param moduleId 模块的id
+     * @return 返回响应的结果
      */
     @PostMapping("/addModule")
-    public BaseResponse<String> addModule(@RequestBody Map<String, String> data){
-        final String moduleId = data.get("moduleId");
+    public BaseResponse<String> addModule(@RequestBody String moduleId){
         return MiddleWare.addModule(moduleId);
     }
     /**
