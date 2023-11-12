@@ -1,5 +1,7 @@
 HELP.md
-target/
+InkslabMQ/target/
+Publisher/target/
+Subscirber/target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

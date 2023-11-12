@@ -9,7 +9,7 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.example</groupId>
-    <artifactId>soft-arc-lab1</artifactId>
+    <artifactId>inkslabMQ</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>soft-arc-lab1</name>
     <description>soft-arc-lab1</description>
