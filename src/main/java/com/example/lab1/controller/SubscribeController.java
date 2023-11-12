@@ -15,13 +15,33 @@ import java.util.Map;
 @RestController
 public class SubscribeController {
     /**
+     *
+     * @param data
+     * @return
+     */
+    @PostMapping("/addModule")
+    public BaseResponse<String> addModule(@RequestBody Map<String, String> data){
+        final String moduleId = data.get("moduleId");
+        return MiddleWare.addModule(moduleId);
+    }
+    /**
      * 向某个队列注册，并开始监听队列，接收消息
      * @return 返回监听到的信息
      */
-    @PostMapping("/getMessageMQ")
+    @PostMapping("/getMessageFromMQ")
     public BaseResponse<String> getMessageFromMQ(@RequestBody Map<String, String> data){
         final String queueId = data.get("queueId");
         return MiddleWare.getMsgFromMQ(queueId);
+    }
+    /**
+     * 向某个队列注册，并开始监听队列，接收消息
+     * @return 返回监听到的信息
+     */
+    @PostMapping("/getMessageFromTopic")
+    public BaseResponse<String> getMessageFromTopic(@RequestBody Map<String, String> data){
+        final String consumerId = data.get("consumerId");
+        final String topicId = data.get("topicId");
+        return MiddleWare.getMsgFromTopic(consumerId,topicId);
     }
 
     @PostMapping(value = "/subscribe/topic")//处理subscribe/topic端点post请求
