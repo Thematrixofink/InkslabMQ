@@ -6,6 +6,7 @@ import com.example.lab1.common.ResultUtils;
 import com.example.lab1.pojo.SubList;
 
 
+import com.example.lab1.pojo.TopicMessage;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 
@@ -17,193 +18,17 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 @Service
 @Slf4j
 public class MiddleWare {
-
-
-    //static final 修饰的一系列线程安全的map
-    //提供一系列更新消息队列或返回消息的方法
-    //储存消息发布者与其发布的主题、订阅它的订阅者的信息
-    public static final Map<String, SubList> subscribeMap = new ConcurrentHashMap<>();//等价下面两个
-    //public static final Map<String, List<String>> subscribeTopicMap = new ConcurrentHashMap<>();//<订阅者，List<主题>>
-    //public static final Map<String,List<String>> subscribePubMap = new ConcurrentHashMap<>();//<订阅者，List<发布者>>
-
-    //保存每个消息对应的主题和发布者都有哪个订阅者没收到
-    public static final Map<Integer, Set<String>> UsefulMQ = new ConcurrentHashMap<>();
-    //消息队列          Key为消息的ID   Value为消息的具体内容
-    public static final Map<Integer, String> MQ = new ConcurrentHashMap<>();
-    //<主题，List<>>    Key为主题     Value为与此主题相关联的消息ID
-    public static final Map<String, List<Integer>> TopicMq = new ConcurrentHashMap<>();
-    //<发布者，List<>>  Key为发布者的ID Value为发布者发送的消息的ID
-    public static final Map<String, List<Integer>> PubMq = new ConcurrentHashMap<>();
-
-
     //消息
     private static final ConcurrentHashMap<String, Vector<String>> msg = new ConcurrentHashMap<>();
 
     //消息队列  Key为队列的ID，Value相应的队列
     private static final ConcurrentHashMap<String, ConcurrentLinkedQueue<String>> msgQueues = new ConcurrentHashMap<>();
-    //Topic
-    private static final ConcurrentHashMap<String, ConcurrentLinkedQueue<String>> topics = new ConcurrentHashMap<>();
+    //Topic key为topic的名称，value为消息
+    private static final ConcurrentHashMap<String, ConcurrentLinkedQueue<TopicMessage>> topics = new ConcurrentHashMap<>();
     //保存topic中哪个消息没有被收到，Key为topic，Value为Map<订阅者Id,需要发送给订阅者的消息>
     private static final ConcurrentHashMap<String, ConcurrentHashMap<String, Vector<String>>> toSendUser = new ConcurrentHashMap<>();
-    //保存订阅响应主题的用户,Key 为topic， Value为
+    //保存订阅响应主题的用户,Key为topic， Value为订阅此主题的用户
     private static final ConcurrentHashMap<String, Vector<String>> topicUser = new ConcurrentHashMap<>();
-
-    //与发布者有关，根据发布者和主题更新TopicMq和PubMq和MQ和UsefulMQ
-
-    /**
-     * 将消息添加到消息队列
-     *
-     * @param publisher 消息发布者的ID
-     * @param topic     发送的主题
-     * @param message   消息的具体内容
-     * @return
-     */
-    public static List<String> appendMQ(String publisher, String topic, String message) {
-        int size = MQ.size();
-        MQ.put(size + 1, message);//更新消息队列，将新的消息添加进消息栈
-        if (PubMq.containsKey(publisher))//查看发布者列表是否包含指定的发布者
-        {
-            List<Integer> list = PubMq.get(publisher);
-            list.add(size + 1);
-        } else {
-            List<Integer> l = new ArrayList<>();
-            l.add(size + 1);
-            PubMq.put(publisher, l);//添加新的发布者和消息序号的对应集合
-        }
-        if (TopicMq.containsKey(topic)) {
-            List<Integer> list = TopicMq.get(topic);
-            list.add(size + 1);
-        } else {
-            List<Integer> l = new ArrayList<>();
-            l.add(size + 1);
-            TopicMq.put(topic, l);//添加新的主题和消息序号的对应集合
-        }
-        for (String sub : subscribeMap.keySet())//遍历每个订阅者
-        {
-            SubList subList = subscribeMap.get(sub);//获取每个订阅者的订阅消息
-            //判断订阅者是否订阅了该主题或发布者
-            if (subList.getSubscribeTopicSet().contains(topic) || subList.getSubscribePubSet().contains(publisher)) {
-                if (UsefulMQ.containsKey(size + 1)) //添加后续订阅者（如果有的话）
-                {
-                    Set<String> set = new HashSet<>();
-                    set = UsefulMQ.get(size + 1);
-                    set.add(sub);
-                } else //添加第一个订阅者
-                {
-                    Set<String> set = new HashSet<>();
-                    set.add(sub);
-                    UsefulMQ.put(size + 1, set);
-                }
-            }
-        }
-        List<String> stringList = new ArrayList<>();
-        return stringList;
-    }
-
-    //与订阅者有关，根据主题更新subscribeMap
-    public static List<String> appendSubcribeByTopic(String subscriber, String topic) {
-        if (subscribeMap.containsKey(subscriber)) {
-            SubList subList = subscribeMap.get(subscriber);
-            subList.subscribeTopicSet.add(topic);//对订阅者添加主题
-        } else {//添加订阅者并添加主题
-            SubList subList = new SubList();
-            Set<String> pubSet = new HashSet<>();
-            Set<String> topicSet = new HashSet<>();
-            topicSet.add(topic);
-            subList.setSubscribePubSet(pubSet);
-            subList.setSubscribeTopicSet(topicSet);
-            subscribeMap.put(subscriber, subList);
-        }
-        List<String> stringList = new ArrayList<>();
-        return stringList;
-    }
-
-    //与订阅者有关，根据发布者更新subscribeMap
-    public static List<String> appendSubcribeByPublisher(String subscriber, String publisher) {
-        if (subscribeMap.containsKey(subscriber)) {
-            SubList subList = subscribeMap.get(subscriber);
-            subList.subscribePubSet.add(publisher);
-        } else {
-            SubList subList = new SubList();
-            Set<String> pubSet = new HashSet<>();
-            Set<String> topicSet = new HashSet<>();
-            pubSet.add(publisher);
-            subList.setSubscribePubSet(pubSet);
-            subList.setSubscribeTopicSet(topicSet);
-            subscribeMap.put(subscriber, subList);
-        }
-        List<String> stringList = new ArrayList<>();
-        return stringList;
-    }
-
-    //与订阅者有关，根据主题返回消息队列
-    public static List<String> subscribeMessageByTopic(String subcriber) {
-        SubList subList = subscribeMap.get(subcriber);//得到订阅者所有订阅的主题
-        Set<String> topicSet = subList.getSubscribeTopicSet();
-        List<String> stringList = new ArrayList<>();
-        for (String topic : topicSet) {
-            List<Integer> list = new ArrayList<>();
-            list = TopicMq.get(topic);
-            List<Integer> newlist1 = new ArrayList<>();
-            newlist1.addAll(list);
-            for (Integer i : newlist1) {
-                if (!MQ.containsKey(i)) {
-                    list.remove(i);//数据筛选，去除不在消息栈中的数据
-                }
-            }
-            List<Integer> newlist = new ArrayList<>();
-            newlist.addAll(list);
-            for (Integer i : newlist) {
-                Set<String> stringSet = new HashSet<>();
-                stringSet = UsefulMQ.get(i);
-                if (stringSet.contains(subcriber)) {
-                    stringSet.remove(subcriber);
-                    stringList.add(MQ.get(i));
-                }
-                if (stringSet.isEmpty()) {
-                    UsefulMQ.remove(i);
-                    MQ.remove(i);
-                    list.remove(i);
-                }
-            }
-        }
-        return stringList;
-    }
-
-    //与订阅者有关，根据订阅者返回消息队列
-    public static List<String> subscribeMessageByPublisher(String subcriber) {
-        SubList subList = subscribeMap.get(subcriber);
-        Set<String> pubSet = subList.getSubscribePubSet();
-        List<String> stringList = new ArrayList<>();
-        for (String pub : pubSet) {
-            List<Integer> list = new ArrayList<>();
-            list = PubMq.get(pub);
-            List<Integer> newlist1 = new ArrayList<>();
-            newlist1.addAll(list);
-            for (Integer i : newlist1) {
-                if (!MQ.containsKey(i)) {
-                    list.remove(i);
-                }
-            }
-            List<Integer> newlist = new ArrayList<>();
-            newlist.addAll(list);
-            for (Integer i : newlist) {
-                Set<String> stringSet = new HashSet<>();
-                stringSet = UsefulMQ.get(i);
-                if (stringSet.contains(subcriber)) {
-                    stringSet.remove(subcriber);
-                    stringList.add(MQ.get(i));
-                }
-                if (stringSet.isEmpty()) {
-                    UsefulMQ.remove(i);
-                    MQ.remove(i);
-                    list.remove(i);
-                }
-            }
-        }
-        return stringList;
-    }
-
 
     /**
      * 向某个特定的消息队列中添加信息
@@ -256,33 +81,33 @@ public class MiddleWare {
      *
      * @param topic   topic的名称
      * @param message 消息内容
+     * @param surTime 消息的存活时间
      * @return 返回响应
      */
-    public static BaseResponse<String> appendToTopic(String topic, String message) {
+    public static BaseResponse<String> appendToTopic(String topic, String message, Long surTime) {
         //检测topic的合法性
         if (topic == null || topic.isEmpty()) return ResultUtils.error(ErrorCode.PARAMS_ERROR, "topic不能为空!");
         //如果主题已经存在，那么就直接向主题中添加一个消息
-        if (topics.containsKey(topic)) {
-            ConcurrentLinkedQueue<String> msgList = topics.get(topic);
-            msgList.offer(message);
-            log.info("向" + topic + "主题中添加" + message);
-        }
-        //如果目标主题不存在，那么就新建一个主题
-        else {
-            ConcurrentLinkedQueue<String> msgList = new ConcurrentLinkedQueue<>();
-            msgList.offer(message);
+        if (!topics.containsKey(topic)) {
+            ConcurrentLinkedQueue<TopicMessage> msgList = new ConcurrentLinkedQueue<>();
             topics.put(topic, msgList);
             topicUser.put(topic, new Vector<>());
-            log.info("新建" + topic + "主题并添加" + message);
         }
+        ConcurrentLinkedQueue<TopicMessage> msgList = topics.get(topic);
+        TopicMessage temp = new TopicMessage();
+        temp.setMessage(message);
+        long l = System.currentTimeMillis() + surTime;
+        temp.setSurvivalTime(l);
+        msgList.offer(temp);
+        log.info("向" + topic + "主题中添加:" + temp.getMessage() + ",其存活时间为:" + temp.getSurvivalTime() + "ms");
         //这个主题需要发给所有的订阅的用户
         if (toSendUser.containsKey(topic)) {
             ConcurrentHashMap<String, Vector<String>> userAndMsg = toSendUser.get(topic);
             Iterator<Map.Entry<String, Vector<String>>> iterator = userAndMsg.entrySet().iterator();
             while (iterator.hasNext()) {
-                Map.Entry<String, Vector<String>> temp = iterator.next();
-                String key = temp.getKey();
-                Vector<String> value = temp.getValue();
+                Map.Entry<String, Vector<String>> temp2 = iterator.next();
+                String key = temp2.getKey();
+                Vector<String> value = temp2.getValue();
                 value.add(message);
                 log.info("向用户:" + key + "的待发送队列里面添加" + message);
             }
@@ -323,11 +148,18 @@ public class MiddleWare {
             users.add(consumerId);
             topicUser.replace(topicId, users);
             //所有的都要发送回去
-            ConcurrentLinkedQueue<String> msg = topics.get(topicId);
-            Iterator<String> iterator = msg.iterator();
+            ConcurrentLinkedQueue<TopicMessage> msg = topics.get(topicId);
+            Iterator<TopicMessage> iterator = msg.iterator();
             StringBuilder data = new StringBuilder();
             while (iterator.hasNext()) {
-                data.append(iterator.next()).append(";");
+                TopicMessage next = iterator.next();
+                Long survivalTime = next.getSurvivalTime();
+                if(survivalTime.compareTo(System.currentTimeMillis()) >= 0) {
+                    data.append(next.getMessage()).append(";");
+                }
+                else{
+                    iterator.remove();
+                }
             }
             log.info("用户:" + consumerId + "第一次到来，发送topic里面所有msg:" + data);
             return ResultUtils.success(data.toString());
@@ -361,7 +193,7 @@ public class MiddleWare {
      * @return 返回消息
      */
     public static BaseResponse<String> addMsg(String message) {
-        if(msg.isEmpty()) return ResultUtils.error(ErrorCode.NOT_FOUND_ERROR,"无注册模块，消息不会被接受");
+        if (msg.isEmpty()) return ResultUtils.error(ErrorCode.NOT_FOUND_ERROR, "无注册模块，消息不会被接受");
         Iterator<Map.Entry<String, Vector<String>>> iterator = msg.entrySet().iterator();
         while (iterator.hasNext()) {
             Map.Entry<String, Vector<String>> temp = iterator.next();
@@ -395,10 +227,10 @@ public class MiddleWare {
                     iterator.remove();
                 }
             }
-            if(data.length() > 0) {
+            if (data.length() > 0) {
                 return ResultUtils.success(data.toString());
-            }else{
-                return ResultUtils.error(ErrorCode.NOT_FOUND_ERROR,"未获取到信息");
+            } else {
+                return ResultUtils.error(ErrorCode.NOT_FOUND_ERROR, "未获取到信息");
             }
         }
 

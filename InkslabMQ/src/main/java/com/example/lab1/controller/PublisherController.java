@@ -52,18 +52,8 @@ public class PublisherController {
     public BaseResponse<String> publishMsgToTopic(@RequestBody Map<String, String> data) {
         final String topic = data.get("topic");//发布的主题
         final String message = data.get("message");//发送的字段
-        return MiddleWare.appendToTopic(topic, message);//添加到消息队列里
+        final String surTime = data.get("surTime");
+        return MiddleWare.appendToTopic(topic, message,Long.parseLong(surTime));//添加,到消息队列里
     }
 
-
-
-    @PostMapping(value = "/publish")
-    public String newPublish(@RequestBody Map<String, String> data) {
-        final String pub_id = data.get("pub_id");//从data中提取相应相应字段的数据 此为发布者id
-        final String topic = data.get("topic");//发布的主题
-        final String message = data.get("message");//发送的字段
-        MiddleWare.appendMQ(pub_id, topic, message);//添加到消息队列里
-        return "OK.";
-    }
 }
-//此部分是使用Spring框架编写的控制器类
