@@ -7,6 +7,8 @@ import com.example.lab1.pojo.SubList;
 
 
 import com.example.lab1.pojo.TopicMessage;
+import lombok.Synchronized;
+import lombok.Value;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 
@@ -18,9 +20,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 @Service
 @Slf4j
 public class MiddleWare {
-    //消息
+    //消息，key为module的id，Value为需要发送给当前module的消息
     private static final ConcurrentHashMap<String, Vector<String>> msg = new ConcurrentHashMap<>();
-
     //消息队列  Key为队列的ID，Value相应的队列
     private static final ConcurrentHashMap<String, ConcurrentLinkedQueue<String>> msgQueues = new ConcurrentHashMap<>();
     //Topic key为topic的名称，value为消息
@@ -150,7 +151,7 @@ public class MiddleWare {
             //所有的都要发送回去
             ConcurrentLinkedQueue<TopicMessage> msg = topics.get(topicId);
             Iterator<TopicMessage> iterator = msg.iterator();
-            StringBuilder data = new StringBuilder();
+            StringBuffer data = new StringBuffer();
             while (iterator.hasNext()) {
                 TopicMessage next = iterator.next();
                 Long survivalTime = next.getSurvivalTime();
@@ -169,17 +170,20 @@ public class MiddleWare {
         if (toSendMsg != null && !toSendMsg.isEmpty()) {
             Vector<String> msgs = toSendMsg.get(consumerId);
             if (msgs != null && !msgs.isEmpty()) {
-                Iterator<String> iterator = msgs.iterator();
-                StringBuilder data = new StringBuilder();
-                while (iterator.hasNext()) {
-                    String next = iterator.next();
-                    data.append(next).append(";");
-                    iterator.remove();
-                    log.info("移除用户:" + consumerId + "待发送事件:" + next);
-                }
-                if (!data.toString().equals("")) {
-                    log.info("向用户:" + consumerId + "发送:" + data);
-                    return ResultUtils.success(data.toString());
+                synchronized (msgs) {
+                    Iterator<String> iterator = msgs.iterator();
+                    StringBuffer data = new StringBuffer();
+                    while (iterator.hasNext()) {
+                        String next = iterator.next();
+                        data.append(next).append(";");
+                        iterator.remove();
+                        log.info("移除用户:" + consumerId + "待发送事件:" + next);
+                    }
+
+                    if (!data.toString().equals("")) {
+                        log.info("向用户:" + consumerId + "发送:" + data);
+                        return ResultUtils.success(data.toString());
+                    }
                 }
             }
         }
@@ -218,7 +222,7 @@ public class MiddleWare {
             return ResultUtils.success("模块注册成功!");
         } else {
             Vector<String> msgs = msg.get(moduleId);
-            StringBuilder data = new StringBuilder();
+            StringBuffer data = new StringBuffer();
             if (msgs != null && !msgs.isEmpty()) {
                 Iterator<String> iterator = msgs.iterator();
                 while (iterator.hasNext()) {
