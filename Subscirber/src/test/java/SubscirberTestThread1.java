@@ -5,9 +5,9 @@ public class SubscirberTestThread1 {
         //1.全广播模式测试
         //testSendAllSub();
         //2.点对点模式测试
-        //testSendMQSub();
+        testSendMQSub();
         //3.发布订阅模式测试
-        testSendTopicSub();
+        //testSendTopicSub();
     }
 
     /**

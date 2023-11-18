@@ -2,11 +2,11 @@ package com.example.lab1.controller;
 
 import com.example.lab1.common.BaseResponse;
 import com.example.lab1.middleware.MiddleWare;
+import com.example.lab1.middleware.MiddleWareImpl;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -14,6 +14,13 @@ import java.util.Map;
  */
 @RestController
 public class SubscribeController {
+
+    private final MiddleWare middleWare;
+
+    {
+        middleWare = new MiddleWareImpl();
+    }
+
     /**
      * 注册模块到消息队列
      * @param moduleId 模块的id
@@ -21,7 +28,8 @@ public class SubscribeController {
      */
     @PostMapping("/addModule")
     public BaseResponse<String> addModule(@RequestBody String moduleId){
-        return MiddleWare.addModule(moduleId);
+        //MiddleWare middleWare = new MiddleWareImpl();
+        return middleWare.addModule(moduleId);
     }
     /**
      * 向某个队列注册，并开始监听队列，接收消息
@@ -29,8 +37,9 @@ public class SubscribeController {
      */
     @PostMapping("/getMessageFromMQ")
     public BaseResponse<String> getMessageFromMQ(@RequestBody Map<String, String> data){
+        //MiddleWare middleWare = new MiddleWareImpl();
         final String queueId = data.get("queueId");
-        return MiddleWare.getMsgFromMQ(queueId);
+        return middleWare.getMsgFromMQ(queueId);
     }
     /**
      * 向某个队列注册，并开始监听队列，接收消息
@@ -38,9 +47,10 @@ public class SubscribeController {
      */
     @PostMapping("/getMessageFromTopic")
     public BaseResponse<String> getMessageFromTopic(@RequestBody Map<String, String> data){
+        //MiddleWare middleWare = new MiddleWareImpl();
         final String consumerId = data.get("consumerId");
         final String topicId = data.get("topicId");
-        return MiddleWare.getMsgFromTopic(consumerId,topicId);
+        return middleWare.getMsgFromTopic(consumerId,topicId);
     }
 
 }

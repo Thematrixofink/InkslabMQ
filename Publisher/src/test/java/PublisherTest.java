@@ -5,9 +5,9 @@ public class PublisherTest {
         //1.全广播模式测试
         //testSendAllPub();
         //2.点对点模式测试
-        //testSendMegToMQ();
+        testSendMegToMQ();
         //3.发布订阅模式测试
-        testSendToTopic();
+        //testSendToTopic();
     }
 
     /**

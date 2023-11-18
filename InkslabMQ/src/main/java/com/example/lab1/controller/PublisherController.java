@@ -2,6 +2,7 @@ package com.example.lab1.controller;
 
 import com.example.lab1.common.BaseResponse;
 import com.example.lab1.middleware.MiddleWare;
+import com.example.lab1.middleware.MiddleWareImpl;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -14,7 +15,11 @@ import java.util.Map;
  */
 @RestController
 public class PublisherController {
+    private final MiddleWare middleWare;
 
+    {
+        middleWare = new MiddleWareImpl();
+    }
 
     /**
      * 全广播模式
@@ -24,7 +29,7 @@ public class PublisherController {
     @PostMapping("/publishAll")
     public BaseResponse<String> publishMsgAll(@RequestParam String message){
         System.out.println(message);
-        return MiddleWare.addMsg(message);
+        return middleWare.addMsg(message);
     }
 
     /**
@@ -36,11 +41,12 @@ public class PublisherController {
      */
     @PostMapping("/publishToMQ")
     public BaseResponse<String> publishMsgToMQ(@RequestBody Map<String, String> data){
+        //MiddleWare middleWare = new MiddleWareImpl();
         //从data中提取相应相应字段的数据 此为队列的ID
         final String pub_id = data.get("queueId");
         //发送的字段
         final String message = data.get("message");
-        return MiddleWare.addMegToMQ(pub_id,message);
+        return middleWare.addMegToMQ(pub_id,message);
     }
 
     /**
@@ -50,10 +56,11 @@ public class PublisherController {
      */
     @PostMapping(value = "/publishToTopic")
     public BaseResponse<String> publishMsgToTopic(@RequestBody Map<String, String> data) {
+        // middleWare = new MiddleWareImpl();
         final String topic = data.get("topic");//发布的主题
         final String message = data.get("message");//发送的字段
         final String surTime = data.get("surTime");
-        return MiddleWare.appendToTopic(topic, message,Long.parseLong(surTime));//添加,到消息队列里
+        return middleWare.appendToTopic(topic, message,Long.parseLong(surTime));//添加,到消息队列里
     }
 
 }
